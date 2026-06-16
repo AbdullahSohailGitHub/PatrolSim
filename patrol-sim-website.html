@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patrol Map Simulator | Phase 1 – UE5 Map Foundation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+
+:root {
+  --electric: #00D9FF;
+  --electric-dim: rgba(0,217,255,0.1);
+  --electric-glow: rgba(0,217,255,0.35);
+  --alert: #FF4D1F;
+  --alert-dim: rgba(255,77,31,0.1);
+  --bg-deep: #020D18;
+  --bg-mid: #06182B;
+  --bg-card: rgba(6,24,43,0.85);
+  --text-primary: #D4E5F4;
+  --text-muted: #4D6A82;
+  --border: rgba(0,217,255,0.15);
+  --border-strong: rgba(0,217,255,0.35);
+  --font-display: 'Rajdhani', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  line-height: 1.65;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4 { font-family: var(--font-display); line-height: 1.15; }
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--electric); }
+
+/* ── NAV ── */
+.nav {
+  position: fixed;
+  top: 0; width: 100%;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.1rem 5rem;
+  background: rgba(2,13,24,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-logo {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--electric);
+  text-shadow: 0 0 15px var(--electric-glow);
+}
+
+.nav-logo strong { color: #fff; }
+
+.nav-links {
+  display: flex;
+  gap: 2.5rem;
+  list-style: none;
+}
+
+.nav-links a {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 0.25s;
+}
+
+.nav-links a:hover { color: var(--electric); }
+
+.nav-btn {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--electric);
+  background: transparent;
+  border: 1px solid var(--electric);
+  padding: 0.55rem 1.6rem;
+  cursor: pointer;
+  clip-path: polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+  transition: all 0.25s;
+}
+
+.nav-btn:hover {
+  background: var(--electric);
+  color: var(--bg-deep);
+  box-shadow: 0 0 25px var(--electric-glow);
+}
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 10rem 2rem 5rem;
+  position: relative;
+  background-image:
+    radial-gradient(ellipse 100% 60% at 50% 10%, rgba(0,217,255,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 15% 85%, rgba(255,77,31,0.04) 0%, transparent 60%),
+    linear-gradient(rgba(0,217,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,217,255,0.04) 1px, transparent 1px),
+    linear-gradient(var(--bg-deep), var(--bg-deep));
+  background-size: 100%, 100%, 70px 70px, 70px 70px, 100%;
+  overflow: hidden;
+}
+
+/* scanlines */
+.hero-scan {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent 0px, transparent 3px,
+    rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
+  );
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: var(--electric);
+  background: var(--electric-dim);
+  border: 1px solid rgba(0,217,255,0.25);
+  padding: 0.45rem 1.2rem;
+  margin-bottom: 2.5rem;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 2;
+}
+
+.badge-blink {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--electric);
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%,100% { opacity:1; }
+  50% { opacity:0.2; }
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(3rem, 9vw, 7rem);
+  line-height: 0.95;
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-title .row-1 {
+  display: block;
+  color: rgba(255,255,255,0.92);
+  letter-spacing: 0.04em;
+}
+
+.hero-title .row-2 {
+  display: block;
+  color: var(--electric);
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 40px rgba(0,217,255,0.6), 0 0 90px rgba(0,217,255,0.22);
+}
+
+/* ── DISPATCH TERMINAL ── */
+.terminal {
+  width: min(660px, 92vw);
+  background: rgba(0,8,20,0.97);
+  border: 1px solid rgba(0,217,255,0.22);
+  padding: 1.6rem 2.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 2;
+  text-align: left;
+  position: relative;
+  z-index: 2;
+  margin: 0 0 2.5rem;
+  box-shadow: 0 0 60px rgba(0,217,255,0.07), inset 0 1px 0 rgba(0,217,255,0.08);
+}
+
+/* horizontal scan line inside terminal */
+.terminal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent 0, transparent 27px,
+    rgba(0,217,255,0.022) 27px, rgba(0,217,255,0.022) 28px
+  );
+  pointer-events: none;
+}
+
+/* top-right corner bracket */
+.terminal::after {
+  content: '';
+  position: absolute;
+  top: -1px; right: -1px;
+  width: 14px; height: 14px;
+  border-top: 1px solid var(--electric);
+  border-right: 1px solid var(--electric);
+}
+
+/* bottom-left corner bracket */
+.t-corner-bl {
+  position: absolute;
+  bottom: -1px; left: -1px;
+  width: 14px; height: 14px;
+  border-bottom: 1px solid var(--electric);
+  border-left: 1px solid var(--electric);
+}
+
+.tl {
+  display: block;
+  position: relative;
+  z-index: 1;
+  color: rgba(0,217,255,0.6);
+}
+
+.t-hd   { color: var(--electric); font-weight: 700; letter-spacing: 0.1em; }
+.t-div  { color: rgba(0,217,255,0.25); letter-spacing: 0; }
+.t-lbl  { color: rgba(0,217,255,0.4); }
+.t-bad  { color: #FF8060; }
+.t-good { color: var(--electric); font-weight: 700; }
+
+.t-cursor {
+  display: inline-block;
+  width: 6px; height: 11px;
+  background: var(--electric);
+  vertical-align: middle;
+  margin-left: 2px;
+  animation: cur 0.9s step-end infinite;
+}
+
+@keyframes cur {
+  0%,100% { opacity:1; }
+  50% { opacity:0; }
+}
+
+.hero-sub {
+  font-size: 1rem;
+  color: var(--text-muted);
+  max-width: 520px;
+  margin: 0 auto 2.5rem;
+  position: relative;
+  z-index: 2;
+  line-height: 1.85;
+}
+
+.hero-sub em { color: var(--text-primary); font-style: normal; }
+
+.hero-btns {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  flex-wrap: wrap;
+}
+
+.btn-main {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--electric);
+  color: var(--bg-deep);
+  border: none;
+  padding: 0.9rem 2.8rem;
+  cursor: pointer;
+  clip-path: polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);
+  transition: all 0.3s;
+}
+
+.btn-main:hover {
+  box-shadow: 0 0 40px rgba(0,217,255,0.55), 0 0 80px rgba(0,217,255,0.2);
+  transform: translateY(-3px);
+}
+
+.btn-ghost {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid rgba(255,255,255,0.18);
+  padding: 0.9rem 2.8rem;
+  cursor: pointer;
+  clip-path: polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);
+  transition: all 0.3s;
+}
+
+.btn-ghost:hover {
+  border-color: var(--electric);
+  color: var(--electric);
+}
+
+/* ── STATS RIBBON ── */
+.stats-ribbon {
+  background: var(--bg-mid);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: center;
+  gap: 5rem;
+  padding: 2.2rem 5rem;
+  flex-wrap: wrap;
+}
+
+.stat { text-align: center; }
+
+.stat-num {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--electric);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 20px rgba(0,217,255,0.45);
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+
+.stat-lbl {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ── LAYOUT ── */
+.container {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 3rem;
+}
+
+.section { padding: 7rem 0; }
+
+.section-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  color: var(--electric);
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+
+.eyebrow::before {
+  content: '';
+  width: 24px; height: 1px;
+  background: var(--electric);
+  flex-shrink: 0;
+}
+
+.section-h {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.5vw, 3.2rem);
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.1;
+  margin-bottom: 1.25rem;
+}
+
+.section-h em {
+  color: var(--electric);
+  font-style: normal;
+  text-shadow: 0 0 25px rgba(0,217,255,0.4);
+}
+
+.section-body {
+  font-size: 1rem;
+  color: var(--text-muted);
+  line-height: 1.85;
+  max-width: 600px;
+}
+
+/* ── PROBLEM ── */
+.problem-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 80% 50%, rgba(255,77,31,0.035) 0%, transparent 65%),
+    var(--bg-deep);
+}
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 3.5rem;
+}
+
+.problem-card {
+  background: rgba(255,77,31,0.04);
+  border: 1px solid rgba(255,77,31,0.18);
+  padding: 2rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.problem-card:hover {
+  border-color: rgba(255,77,31,0.4);
+  box-shadow: 0 0 30px rgba(255,77,31,0.07);
+}
+
+.p-icon { font-size: 1.8rem; margin-bottom: 1rem; display: block; }
+
+.problem-card h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #ff8b6e;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+
+.problem-card p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.78;
+}
+
+/* ── DELIVERABLES ── */
+.deliverables-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-top: 3.5rem;
+}
+
+.del-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 2rem 1.75rem;
+  position: relative;
+  transition: all 0.3s;
+  overflow: hidden;
+}
+
+.del-card::before,
+.del-card::after {
+  content: '';
+  position: absolute;
+  width: 10px; height: 10px;
+  border-color: var(--electric);
+  border-style: solid;
+  opacity: 0.35;
+  transition: all 0.3s;
+}
+
+.del-card::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.del-card::after  { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+.del-card:hover {
+  border-color: rgba(0,217,255,0.35);
+  box-shadow: 0 0 35px rgba(0,217,255,0.07);
+  transform: translateY(-4px);
+  background: rgba(0,217,255,0.03);
+}
+
+.del-card:hover::before,
+.del-card:hover::after { opacity:1; width:16px; height:16px; }
+
+.del-card-num {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.del-icon { font-size: 2rem; margin-bottom: 1rem; display: block; }
+
+.del-card h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--electric);
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+
+.del-card p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+
+/* ── WORKFLOW ── */
+.wf-bg {
+  background:
+    radial-gradient(ellipse 70% 60% at 15% 50%, rgba(0,217,255,0.025) 0%, transparent 60%),
+    var(--bg-mid);
+}
+
+.wf-steps {
+  margin-top: 3.5rem;
+}
+
+.wf-step {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: 1.75rem;
+  align-items: start;
+  padding: 2.25rem 0;
+  border-bottom: 1px solid rgba(0,217,255,0.06);
+}
+
+.wf-step:last-child { border-bottom: none; }
+
+.wf-num {
+  font-family: var(--font-display);
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: rgba(0,217,255,0.1);
+  line-height: 1;
+  transition: color 0.3s;
+  padding-top: 0.2rem;
+}
+
+.wf-step:hover .wf-num { color: rgba(0,217,255,0.4); }
+
+.wf-content h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.wf-content p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.78;
+  max-width: 540px;
+}
+
+.wf-pill {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--electric);
+  background: var(--electric-dim);
+  border: 1px solid rgba(0,217,255,0.2);
+  padding: 0.35rem 0.9rem;
+  white-space: nowrap;
+  margin-top: 0.3rem;
+  align-self: flex-start;
+}
+
+/* ── COMPARISON ── */
+.comp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 3.5rem;
+}
+
+.comp-bad {
+  background: rgba(255,77,31,0.04);
+  border: 1px solid rgba(255,77,31,0.18);
+  padding: 2rem;
+}
+
+.comp-good {
+  background: rgba(0,217,255,0.04);
+  border: 1px solid rgba(0,217,255,0.2);
+  padding: 2rem;
+}
+
+.comp-hd {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.comp-bad .comp-hd  { color: #ff8b6e; }
+.comp-good .comp-hd { color: var(--electric); }
+
+.comp-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.comp-list li {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.comp-list li .mark { flex-shrink: 0; }
+
+/* ── CTA ── */
+.cta-wrap {
+  background: var(--bg-mid);
+  border-top: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 70% at 50% 50%, rgba(0,217,255,0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cta-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,217,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,217,255,0.025) 1px, transparent 1px);
+  background-size: 70px 70px;
+  pointer-events: none;
+}
+
+.cta-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 7rem 2rem;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.cta-pre {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.25em;
+  color: var(--electric);
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+}
+
+.cta-h {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+}
+
+.cta-h em {
+  color: var(--electric);
+  font-style: normal;
+  text-shadow: 0 0 30px rgba(0,217,255,0.5);
+}
+
+.cta-free-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--electric);
+  background: var(--electric-dim);
+  border: 1px solid rgba(0,217,255,0.28);
+  padding: 0.5rem 1.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.cta-p {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.88;
+  margin-bottom: 2.75rem;
+}
+
+.cta-btns {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── FOOTER ── */
+footer {
+  background: var(--bg-deep);
+  border-top: 1px solid rgba(0,217,255,0.07);
+  padding: 2rem 5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.foot-logo {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--electric);
+  opacity: 0.65;
+}
+
+.foot-logo strong { color: rgba(255,255,255,0.75); }
+
+.foot-copy {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ── SCROLL REVEAL ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.65s ease, transform 0.65s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .nav { padding: 1rem 1.5rem; }
+  .nav-links { display: none; }
+  .container { padding: 0 1.5rem; }
+  .section { padding: 5rem 0; }
+  .problem-grid,
+  .comp-grid { grid-template-columns: 1fr; }
+  .deliverables-grid { grid-template-columns: 1fr 1fr; }
+  .stats-ribbon { gap: 2rem; padding: 2rem; }
+  .hero { padding: 8rem 1.5rem 4rem; }
+  .wf-step { grid-template-columns: 50px 1fr; }
+  .wf-pill { display: none; }
+  .cta-content { padding: 5rem 1.5rem; }
+  footer { padding: 2rem 1.5rem; flex-direction: column; text-align: center; }
+}
+
+@media (max-width: 580px) {
+  .deliverables-grid { grid-template-columns: 1fr; }
+  .hero-title { font-size: clamp(2.5rem, 13vw, 4rem); }
+  .terminal { font-size: 0.6rem; padding: 1.2rem 1.4rem; }
+}
+
+/* animated scan line across top */
+@keyframes hline {
+  0%   { transform: translateX(-100%); opacity:0; }
+  10%  { opacity:1; }
+  90%  { opacity:1; }
+  100% { transform: translateX(100%); opacity:0; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top scan line -->
+<div style="position:fixed;top:0;left:0;right:0;height:2px;z-index:9999;pointer-events:none;background:linear-gradient(90deg,transparent,var(--electric) 40%,#fff 50%,var(--electric) 60%,transparent);animation:hline 2.6s cubic-bezier(.4,0,.2,1) infinite;"></div>
+
+<!-- NAV -->
+<header class="nav">
+  <div class="nav-logo">PATROL<strong>SIM</strong></div>
+  <ul class="nav-links">
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#deliverables">Deliverables</a></li>
+    <li><a href="#workflow">Workflow</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <button class="nav-btn" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Free Audit</button>
+</header>
+
+<main>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-scan"></div>
+
+  <div class="hero-badge">
+    <span class="badge-blink"></span>
+    Phase 1 &nbsp;—&nbsp; Map Foundation &nbsp;—&nbsp; Unreal Engine 5
+  </div>
+
+  <h1 class="hero-title">
+    <span class="row-1">DRIVABLE PATROL</span>
+    <span class="row-2">MAP SIMULATOR</span>
+  </h1>
+
+  <!-- DISPATCH TERMINAL — the signature element -->
+  <div class="terminal">
+    <div class="t-corner-bl"></div>
+    <span class="tl t-hd">▍ DISPATCH UNIT &nbsp;—&nbsp; INCIDENT REPORT</span>
+    <span class="tl t-div">────────────────────────────────────────────────</span>
+    <span class="tl"><span class="t-lbl">INCIDENT TYPE   </span> : <span class="t-bad">MAP QUALITY FAILURE</span></span>
+    <span class="tl"><span class="t-lbl">CAUSE           </span> : <span class="t-bad">PHOTOGRAMMETRY TILE DISTORTION</span></span>
+    <span class="tl"><span class="t-lbl">STREET STATUS   </span> : <span class="t-bad">UNUSABLE AT GROUND LEVEL</span></span>
+    <span class="tl t-div">────────────────────────────────────────────────</span>
+    <span class="tl"><span class="t-lbl">RESPONSE UNIT   </span> : <span class="t-good">MUHAMMAD AWAIS &nbsp;/&nbsp; GAME DEV [7 YRS]</span></span>
+    <span class="tl"><span class="t-lbl">ASSIGNED ACTION </span> : <span class="t-good">PHASE 1 MAP REBUILD — OSM WORKFLOW</span></span>
+    <span class="tl"><span class="t-lbl">ETA             </span> : <span class="t-good">4 – 6 WEEKS</span></span>
+    <span class="tl"><span class="t-lbl">FREE AUDIT      </span> : <span class="t-good">AVAILABLE NOW &nbsp;—&nbsp; 24H TURNAROUND</span></span>
+    <span class="tl t-div">────────────────────────────────────────────────</span>
+    <span class="tl t-hd">STATUS : <span class="t-good">RESPONDING <span class="t-cursor"></span></span></span>
+  </div>
+
+  <p class="hero-sub">
+    A <em>clean, readable, stylized map</em> for patrol training — not photorealism.
+    Route familiarity. Drivable intersections. GTA-level clarity. Unreal Engine 5.
+  </p>
+
+  <div class="hero-btns">
+    <button class="btn-main" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Start Phase 1</button>
+    <button class="btn-ghost" onclick="document.getElementById('deliverables').scrollIntoView({behavior:'smooth'})">See Deliverables</button>
+  </div>
+</section>
+
+<!-- STATS RIBBON -->
+<div class="stats-ribbon">
+  <div class="stat">
+    <span class="stat-num">20+</span>
+    <span class="stat-lbl">Shipped Titles</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">7</span>
+    <span class="stat-lbl">Years Experience</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">4–6</span>
+    <span class="stat-lbl">Week Delivery</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">FREE</span>
+    <span class="stat-lbl">Prototype Audit</span>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- PROBLEM -->
+<section class="section problem-bg" id="problem">
+  <div class="container">
+    <div class="eyebrow">Situation Report</div>
+    <h2 class="section-h">Why Your Last Map <em>Failed</em></h2>
+    <p class="section-body">Photogrammetry tiles look impressive from a drone. At street level they collapse — warped geometry, melted intersections, frame drops. The issue wasn't budget. It was the wrong workflow for a training environment.</p>
+
+    <div class="problem-grid">
+      <div class="problem-card reveal">
+        <span class="p-icon">⚠️</span>
+        <h3>Distorted Photogrammetry</h3>
+        <p>3D tile imports warp and break at street level. Road surfaces become unusable the moment a vehicle tries to follow them.</p>
+      </div>
+      <div class="problem-card reveal">
+        <span class="p-icon">🚧</span>
+        <h3>Broken Intersections</h3>
+        <p>Melted geometry at junctions makes clean navigation impossible. A training sim demands crisp, drivable corners — not warped tiles.</p>
+      </div>
+      <div class="problem-card reveal">
+        <span class="p-icon">📉</span>
+        <h3>Frame Rate Collapse</h3>
+        <p>Heavy photogrammetry meshes tank UE5 performance. Consistent frame rates aren't a luxury in a training simulator — they're the baseline.</p>
+      </div>
+      <div class="problem-card reveal">
+        <span class="p-icon">🔇</span>
+        <h3>Visual Noise Kills Recognition</h3>
+        <p>Overly detailed trees, stores, and facades make landmark recognition harder. Training needs clarity, not detail for its own sake.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- DELIVERABLES -->
+<section class="section" id="deliverables">
+  <div class="container">
+    <div class="eyebrow">Phase 1 Deliverables</div>
+    <h2 class="section-h">What You <em>Get</em></h2>
+    <p class="section-body">A fully drivable, clean UE5 environment of your patrol area. Ready to navigate, recognize, and build on from day one.</p>
+
+    <div class="deliverables-grid">
+      <div class="del-card reveal">
+        <span class="del-card-num">// 01</span>
+        <span class="del-icon">🗺️</span>
+        <h3>Accurate Road Layout</h3>
+        <p>Patrol zone roads built from OpenStreetMap or GIS data — correct proportions, real-world routing, clean geometry throughout.</p>
+      </div>
+      <div class="del-card reveal">
+        <span class="del-card-num">// 02</span>
+        <span class="del-icon">🚦</span>
+        <h3>Drivable Intersections</h3>
+        <p>Every junction clean, navigable, and scaled for vehicle simulation. No clipping, no warped mesh edges — just usable corners.</p>
+      </div>
+      <div class="del-card reveal">
+        <span class="del-card-num">// 03</span>
+        <span class="del-icon">🛣️</span>
+        <h3>Freeway &amp; Ramp Layout</h3>
+        <p>Working freeway sections with on/off ramps. Highway geometry scaled and drivable at realistic training speeds.</p>
+      </div>
+      <div class="del-card reveal">
+        <span class="del-card-num">// 04</span>
+        <span class="del-icon">🏙️</span>
+        <h3>Simplified Landmarks</h3>
+        <p>Low-poly building proxies at major corridors for instant area recognition — orientation markers, not architectural models.</p>
+      </div>
+      <div class="del-card reveal">
+        <span class="del-card-num">// 05</span>
+        <span class="del-icon">⚡</span>
+        <h3>Optimized Performance</h3>
+        <p>LOD-tuned assets, clean draw call budgets, culling volumes — stable, consistent frame rates in UE5 at all times.</p>
+      </div>
+      <div class="del-card reveal">
+        <span class="del-card-num">// 06</span>
+        <span class="del-icon">📦</span>
+        <h3>Full Project Files</h3>
+        <p>Complete UE5 project with documentation and setup notes. Phase 2 gameplay systems layer on top without a map rebuild.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- WORKFLOW -->
+<section class="section wf-bg" id="workflow">
+  <div class="container">
+    <div class="eyebrow">Build Process</div>
+    <h2 class="section-h">The Right <em>Workflow</em></h2>
+    <p class="section-body">No photogrammetry. No tile imports. A clean, deliberate pipeline built from the ground up for drivable training environments.</p>
+
+    <div class="wf-steps">
+      <div class="wf-step reveal">
+        <div class="wf-num">01</div>
+        <div class="wf-content">
+          <h3>Define the Patrol Boundary</h3>
+          <p>Lock the exact training zone and pull road network data from OpenStreetMap or GIS. Real-world geometry from day one — no manual redrawing needed.</p>
+        </div>
+        <div class="wf-pill">OSM / GIS</div>
+      </div>
+      <div class="wf-step reveal">
+        <div class="wf-num">02</div>
+        <div class="wf-content">
+          <h3>Build the Road Network</h3>
+          <p>Convert map data into clean UE5 road splines. Every road, lane, shoulder, intersection, and ramp built from scratch — not imported. Clean geometry from the start.</p>
+        </div>
+        <div class="wf-pill">UE5 Splines</div>
+      </div>
+      <div class="wf-step reveal">
+        <div class="wf-num">03</div>
+        <div class="wf-content">
+          <h3>Place Simplified Landmarks</h3>
+          <p>Low-poly building proxies at major corridors, freeway exits, and key blocks. GTA-level clarity — orientation anchors, not architectural showcases.</p>
+        </div>
+        <div class="wf-pill">Stylized LODs</div>
+      </div>
+      <div class="wf-step reveal">
+        <div class="wf-num">04</div>
+        <div class="wf-content">
+          <h3>Optimize for Performance</h3>
+          <p>LOD levels, culling volumes, and draw call budgets tuned for stable frame rates in UE5. A training simulator needs consistency above everything else.</p>
+        </div>
+        <div class="wf-pill">UE5 Perf</div>
+      </div>
+      <div class="wf-step reveal">
+        <div class="wf-num">05</div>
+        <div class="wf-content">
+          <h3>Deliver &amp; Hand Off</h3>
+          <p>Full UE5 project files with documentation. Drive-through ready from day one. Phase 2 gameplay layers on top — no map rebuild required.</p>
+        </div>
+        <div class="wf-pill">4–6 Weeks</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- STYLE COMPARISON -->
+<section class="section" id="style">
+  <div class="container">
+    <div class="eyebrow">Style Direction</div>
+    <h2 class="section-h">Training First. <em>Not Photorealistic.</em></h2>
+    <p class="section-body">The goal is accurate enough for route familiarity — recognizable enough for muscle memory training. Not impressive in a screenshot. Usable on the ground.</p>
+
+    <div class="comp-grid">
+      <div class="comp-bad reveal">
+        <div class="comp-hd">❌ Not This</div>
+        <ul class="comp-list">
+          <li><span class="mark">—</span><span>Heavy photogrammetry tile imports</span></li>
+          <li><span class="mark">—</span><span>Melted / distorted 3D map geometry at street level</span></li>
+          <li><span class="mark">—</span><span>Flight-simulator style city rendering</span></li>
+          <li><span class="mark">—</span><span>Overly detailed homes, trees, and storefronts</span></li>
+          <li><span class="mark">—</span><span>Poor and inconsistent frame performance in UE5</span></li>
+          <li><span class="mark">—</span><span>Unusable for real driving reps at ground level</span></li>
+        </ul>
+      </div>
+      <div class="comp-good reveal">
+        <div class="comp-hd">✅ This</div>
+        <ul class="comp-list">
+          <li><span class="mark">→</span><span>GTA-style map readability and street-level clarity</span></li>
+          <li><span class="mark">→</span><span>Clean road geometry built from real OSM / GIS data</span></li>
+          <li><span class="mark">→</span><span>Stylized but spatially accurate to the patrol area</span></li>
+          <li><span class="mark">→</span><span>Simplified landmarks optimized for fast recognition</span></li>
+          <li><span class="mark">→</span><span>Stable, consistent UE5 performance throughout</span></li>
+          <li><span class="mark">→</span><span>Built for driving reps — clean, maneuverable, precise</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- CTA -->
+<div class="cta-wrap" id="contact">
+  <div class="cta-content">
+    <div class="cta-pre">// Free Prototype Audit — 24-Hour Turnaround</div>
+    <h2 class="cta-h">Send Your Files.<br>I'll Tell You <em>Exactly</em><br>What Broke.</h2>
+    <div class="cta-free-badge">✦ No charge. No commitment. Written breakdown.</div>
+    <p class="cta-p">
+      Share the existing UE5 prototype and you'll get a clear written breakdown
+      of exactly what caused the map quality issues — before we discuss Phase 1 scope.
+      You'll know what went wrong and precisely how to fix it.
+    </p>
+    <div class="cta-btns">
+      <button class="btn-main">Send Prototype Files</button>
+      <button class="btn-ghost">Ask a Question</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-logo">PATROL<strong>SIM</strong></div>
+  <div class="foot-copy">Phase 1 Map Foundation &nbsp;·&nbsp; Unreal Engine 5 &nbsp;·&nbsp; Muhammad Awais</div>
+  <div class="foot-copy" style="color:rgba(0,217,255,0.38);">UE5 · OSM · TRAINING · MAP</div>
+</footer>
+
+<script>
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      obs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+
+</body>
+</html>
